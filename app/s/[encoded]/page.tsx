@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation"
+import { isShortShareId } from "@/lib/share-links"
+import { getStoredShareStack } from "@/lib/share-store"
 import { decodeStack } from "@/lib/stack-utils"
 import { StackViewer } from "@/components/stack-viewer"
 
@@ -10,7 +12,9 @@ interface SharePageProps {
 
 export async function generateMetadata({ params }: SharePageProps) {
   const { encoded } = await params
-  const stack = decodeStack(encoded)
+  const stack = isShortShareId(encoded)
+    ? (await getStoredShareStack(encoded)) ?? decodeStack(encoded)
+    : decodeStack(encoded)
   
   if (!stack) {
     return {
@@ -26,7 +30,9 @@ export async function generateMetadata({ params }: SharePageProps) {
 
 export default async function SharePage({ params }: SharePageProps) {
   const { encoded } = await params
-  const stack = decodeStack(encoded)
+  const stack = isShortShareId(encoded)
+    ? (await getStoredShareStack(encoded)) ?? decodeStack(encoded)
+    : decodeStack(encoded)
 
   if (!stack) {
     notFound()

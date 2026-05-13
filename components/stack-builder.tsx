@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { StackItem, Category, categoryLabels, categoryIcons } from "@/lib/types"
+import { buildStoredShareUrl } from "@/lib/share-links"
 import { generateShareUrl } from "@/lib/stack-utils"
 
 const STACK_STORAGE_KEY = "lock-in-stack-builder"
@@ -20,7 +21,8 @@ const STACK_STORAGE_KEY = "lock-in-stack-builder"
 interface PersistedBuilderState {
   title: string
   items: StackItem[]
-  hasGeneratedShareLink: boolean
+  hasGeneratedShareLink?: boolean
+  shareId?: string | null
 }
 
 export function StackBuilder() {
@@ -33,12 +35,16 @@ export function StackBuilder() {
   const [newItemCategory, setNewItemCategory] = useState<Category>("apps")
   const [manualImageInput, setManualImageInput] = useState("")
   const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [shareId, setShareId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<Category>>(new Set())
   const [hasLoadedPersistedStack, setHasLoadedPersistedStack] = useState(false)
   const metadataRequestIdRef = useRef(0)
   const latestUrlRef = useRef("")
+  const lastSharedSnapshotRef = useRef<string | null>(null)
 
   useEffect(() => {
     try {
@@ -55,7 +61,11 @@ export function StackBuilder() {
       setTitle(persistedTitle)
       setItems(persistedItems)
 
-      if (persistedState.hasGeneratedShareLink && persistedItems.length > 0) {
+      if (persistedState.shareId) {
+        setShareId(persistedState.shareId)
+        setShareUrl(buildStoredShareUrl(window.location.origin, persistedState.shareId))
+        lastSharedSnapshotRef.current = JSON.stringify({ title: persistedTitle, items: persistedItems })
+      } else if (persistedState.hasGeneratedShareLink && persistedItems.length > 0) {
         setShareUrl(generateShareUrl({ title: persistedTitle, items: persistedItems }))
       }
     } catch (error) {
@@ -72,10 +82,11 @@ export function StackBuilder() {
       title,
       items,
       hasGeneratedShareLink: Boolean(shareUrl),
+      shareId,
     }
 
     window.localStorage.setItem(STACK_STORAGE_KEY, JSON.stringify(persistedState))
-  }, [hasLoadedPersistedStack, items, shareUrl, title])
+  }, [hasLoadedPersistedStack, items, shareId, shareUrl, title])
 
   const toggleCategory = (category: Category) => {
     setCollapsedCategories((prev) => {
@@ -175,20 +186,74 @@ export function StackBuilder() {
     setItems(items.filter((item) => item.id !== id))
   }
 
+  async function syncShareLink(existingShareId?: string | null, snapshotOverride?: string) {
+    const stack = { title, items }
+    const snapshot = snapshotOverride ?? JSON.stringify(stack)
+
+    setIsSharing(true)
+    setShareError(null)
+
+    try {
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shareId: existingShareId ?? shareId ?? undefined,
+          stack,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Short-link storage unavailable")
+      }
+
+      const data = (await response.json()) as { shareId: string; url: string }
+      setShareId(data.shareId)
+      setShareUrl(data.url)
+      setCopied(false)
+      lastSharedSnapshotRef.current = snapshot
+    } catch (error) {
+      console.error("Failed to create short share link:", error)
+      if (existingShareId ?? shareId) {
+        setShareError("couldn't sync your latest changes yet, but your short link still works")
+      } else {
+        setShareId(null)
+        setShareUrl(generateShareUrl(stack))
+        setShareError("short links will work after storage is connected; using a long link for now")
+      }
+      lastSharedSnapshotRef.current = null
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
   const handleShare = () => {
-    const url = generateShareUrl({ title, items })
-    setShareUrl(url)
+    void syncShareLink()
   }
 
   useEffect(() => {
-    if (!shareUrl) return
+    if (!shareId) {
+      if (!shareUrl) return
 
-    const nextShareUrl = generateShareUrl({ title, items })
-    if (nextShareUrl !== shareUrl) {
-      setShareUrl(nextShareUrl)
-      setCopied(false)
+      const nextShareUrl = generateShareUrl({ title, items })
+      if (nextShareUrl !== shareUrl) {
+        setShareUrl(nextShareUrl)
+        setCopied(false)
+      }
+      return
     }
-  }, [items, shareUrl, title])
+
+    const snapshot = JSON.stringify({ title, items })
+    if (snapshot === lastSharedSnapshotRef.current) return
+
+    const timeoutId = window.setTimeout(() => {
+      void syncShareLink(shareId, snapshot)
+    }, 500)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [items, shareId, shareUrl, title])
 
   const copyToClipboard = async () => {
     if (!shareUrl) return
@@ -403,13 +468,18 @@ export function StackBuilder() {
           {/* Share Section */}
           <div className="pt-4 space-y-4">
             {!shareUrl ? (
-            <Button
-              onClick={handleShare}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              size="lg"
-            >
-                <Share2 className="w-4 h-4 mr-2" />
-                generate share link
+              <Button
+                onClick={handleShare}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                size="lg"
+                disabled={isSharing}
+              >
+                {isSharing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Share2 className="w-4 h-4 mr-2" />
+                )}
+                {isSharing ? "creating short link..." : "generate share link"}
               </Button>
             ) : (
               <Card className="bg-primary/5 border-primary/20">
@@ -417,6 +487,16 @@ export function StackBuilder() {
                   <p className="text-sm text-primary font-medium">
                     share link generated!
                   </p>
+                  {isSharing && shareId && (
+                    <p className="text-xs text-muted-foreground">
+                      updating the shared stack...
+                    </p>
+                  )}
+                  {shareError && (
+                    <p className="text-xs text-muted-foreground">
+                      {shareError}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       value={shareUrl}
