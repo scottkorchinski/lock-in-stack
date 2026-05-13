@@ -103,6 +103,15 @@ export function StackViewer({ stack }: StackViewerProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8">
+      <header className="text-center space-y-4">
+        <h1 className="text-4xl sm:text-6xl font-bold text-foreground tracking-tight text-balance">
+          lock<span className="text-primary">in</span>stack.
+        </h1>
+        <p className="text-muted-foreground text-lg max-w-md mx-auto text-pretty">
+          share your focus toolkit. the books, apps, habits, and tools that help you lock in.
+        </p>
+      </header>
+
       <div className="flex items-center">
         <Link href="/">
           <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
