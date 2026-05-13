@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Plus, X, Share2, Check, Copy, Link as LinkIcon, Loader2, ExternalLink, ImageIcon, ChevronDown, PencilLine } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -133,6 +133,16 @@ export function StackBuilder() {
     const url = generateShareUrl({ title, items })
     setShareUrl(url)
   }
+
+  useEffect(() => {
+    if (!shareUrl) return
+
+    const nextShareUrl = generateShareUrl({ title, items })
+    if (nextShareUrl !== shareUrl) {
+      setShareUrl(nextShareUrl)
+      setCopied(false)
+    }
+  }, [items, shareUrl, title])
 
   const copyToClipboard = async () => {
     if (!shareUrl) return
