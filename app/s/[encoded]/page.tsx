@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
-import { isShortShareId } from "@/lib/share-links"
-import { getStoredShareStack } from "@/lib/share-store"
-import { decodeStack } from "@/lib/stack-utils"
+import { getSharedStack } from "@/lib/shared-stack"
+import { getSiteUrl } from "@/lib/site-url"
 import { StackViewer } from "@/components/stack-viewer"
 
 interface SharePageProps {
@@ -12,27 +11,44 @@ interface SharePageProps {
 
 export async function generateMetadata({ params }: SharePageProps) {
   const { encoded } = await params
-  const stack = isShortShareId(encoded)
-    ? (await getStoredShareStack(encoded)) ?? decodeStack(encoded)
-    : decodeStack(encoded)
-  
+  const stack = await getSharedStack(encoded)
+
   if (!stack) {
     return {
       title: "stack not found",
     }
   }
 
+  const description = `${stack.items.length} focus tools in this stack`
+  const imageUrl = new URL(`/s/${encodeURIComponent(encoded)}/opengraph-image`, getSiteUrl()).toString()
+
   return {
     title: `${stack.title} | lock in stack`,
-    description: `${stack.items.length} focus tools in this stack`,
+    description,
+    openGraph: {
+      title: `${stack.title} | lock in stack`,
+      description,
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${stack.title} preview`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${stack.title} | lock in stack`,
+      description,
+      images: [imageUrl],
+    },
   }
 }
 
 export default async function SharePage({ params }: SharePageProps) {
   const { encoded } = await params
-  const stack = isShortShareId(encoded)
-    ? (await getStoredShareStack(encoded)) ?? decodeStack(encoded)
-    : decodeStack(encoded)
+  const stack = await getSharedStack(encoded)
 
   if (!stack) {
     notFound()

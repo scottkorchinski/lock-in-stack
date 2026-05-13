@@ -272,8 +272,6 @@ export function StackBuilder() {
     },
     {} as Record<Category, StackItem[]>
   )
-  const canGenerateReplacementShortLink = Boolean(shareUrl && !shareId)
-
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8">
       {/* Title Input */}
@@ -488,27 +486,6 @@ export function StackBuilder() {
                   <p className="text-sm text-primary font-medium">
                     share link generated!
                   </p>
-                  {canGenerateReplacementShortLink && (
-                    <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        this is an older long link. generate a new short link once and we'll save it for this stack.
-                      </p>
-                      <Button
-                        type="button"
-                        onClick={handleShare}
-                        variant="outline"
-                        className="border-border sm:shrink-0"
-                        disabled={isSharing}
-                      >
-                        {isSharing ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Share2 className="w-4 h-4 mr-2" />
-                        )}
-                        generate new short link
-                      </Button>
-                    </div>
-                  )}
                   {isSharing && shareId && (
                     <p className="text-xs text-muted-foreground">
                       updating the shared stack...
