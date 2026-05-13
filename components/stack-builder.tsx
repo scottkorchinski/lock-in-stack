@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Plus, X, Share2, Check, Copy, Link as LinkIcon, Loader2, ExternalLink, ImageIcon, ChevronDown } from "lucide-react"
+import { Plus, X, Share2, Check, Copy, Link as LinkIcon, Loader2, ExternalLink, ImageIcon, ChevronDown, PencilLine } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -155,12 +155,16 @@ export function StackBuilder() {
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8">
       {/* Title Input */}
-      <div className="space-y-2">
+      <div className="space-y-3 rounded-xl border border-border bg-card/70 p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <PencilLine className="w-4 h-4" />
+          <span>stack name</span>
+        </div>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="name your stack..."
-          className="text-2xl font-bold bg-transparent border-none px-0 h-auto py-2 text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+          className="h-auto border-border bg-secondary/60 px-4 py-3 text-2xl font-bold text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
         />
         <p className="text-muted-foreground text-sm">
           add your focus tools below
