@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, Share2, ExternalLink, ChevronDown } from "lucide-react"
+import { Layers3, ExternalLink, ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Stack, Category, categoryLabels, categoryIcons, StackItem } from "@/lib/types"
@@ -112,15 +112,6 @@ export function StackViewer({ stack }: StackViewerProps) {
         </p>
       </header>
 
-      <div className="flex items-center">
-        <Link href="/">
-          <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            create your own
-          </Button>
-        </Link>
-      </div>
-
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-foreground">{stack.title}</h1>
         <p className="text-muted-foreground">
@@ -181,7 +172,7 @@ export function StackViewer({ stack }: StackViewerProps) {
         </p>
         <Link href="/">
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Share2 className="w-4 h-4 mr-2" />
+            <Layers3 className="w-4 h-4 mr-2" />
             create your stack
           </Button>
         </Link>
