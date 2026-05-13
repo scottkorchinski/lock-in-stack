@@ -1,10 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, Share2, Check, Copy, ExternalLink, ChevronDown } from "lucide-react"
-import { useState, useEffect } from "react"
+import { ArrowLeft, Share2, ExternalLink, ChevronDown } from "lucide-react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Stack, Category, categoryLabels, categoryIcons, StackItem } from "@/lib/types"
 
 interface StackViewerProps {
@@ -12,13 +11,8 @@ interface StackViewerProps {
 }
 
 export function StackViewer({ stack }: StackViewerProps) {
-  const [copied, setCopied] = useState(false)
-  const [url, setUrl] = useState("")
   const [collapsedCategories, setCollapsedCategories] = useState<Set<Category>>(new Set())
-
-  useEffect(() => {
-    setUrl(window.location.href)
-  }, [])
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set())
 
   const toggleCategory = (category: Category) => {
     setCollapsedCategories((prev) => {
@@ -32,10 +26,20 @@ export function StackViewer({ stack }: StackViewerProps) {
     })
   }
 
-  const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const toggleDescription = (itemId: string) => {
+    setExpandedDescriptions((prev) => {
+      const next = new Set(prev)
+      if (next.has(itemId)) {
+        next.delete(itemId)
+      } else {
+        next.add(itemId)
+      }
+      return next
+    })
+  }
+
+  const openItemLink = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   const groupedItems = stack.items.reduce(
@@ -49,68 +53,63 @@ export function StackViewer({ stack }: StackViewerProps) {
     {} as Record<Category, StackItem[]>
   )
 
-  const ItemContent = ({ item }: { item: StackItem }) => (
-    <div className="p-4 flex items-start gap-4">
-      {item.image && (
-        <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
-          <img
-            src={item.image}
-            alt={item.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-foreground">
-            {item.name}
-          </p>
-          {item.url && (
-            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+  const ItemContent = ({ item }: { item: StackItem }) => {
+    const isExpanded = expandedDescriptions.has(item.id)
+    const canExpandDescription = (item.description?.length ?? 0) > 140
+
+    return (
+      <div className="p-4 flex items-start gap-4">
+        {item.image && (
+          <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
+            <img
+              src={item.image}
+              alt={item.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-foreground">
+              {item.name}
+            </p>
+            {item.url && (
+              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            )}
+          </div>
+          {item.description && (
+            <div className="mt-1 space-y-1">
+              <p className={`text-sm text-muted-foreground ${isExpanded ? "" : "line-clamp-2"}`}>
+                {item.description}
+              </p>
+              {canExpandDescription && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary hover:underline"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    toggleDescription(item.id)
+                  }}
+                >
+                  {isExpanded ? "show less" : "show more"}
+                </button>
+              )}
+            </div>
           )}
         </div>
-        {item.description && (
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-            {item.description}
-          </p>
-        )}
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <Link href="/">
           <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4 mr-2" />
             create your own
           </Button>
         </Link>
-        <div className="flex gap-2">
-          <Input
-            value={url}
-            readOnly
-            className="w-48 sm:w-64 bg-secondary border-border text-xs hidden sm:block"
-          />
-          <Button
-            onClick={copyToClipboard}
-            variant="outline"
-            className="shrink-0 border-border"
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                copied
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4 mr-2" />
-                share
-              </>
-            )}
-          </Button>
-        </div>
       </div>
 
       <div className="space-y-2">
@@ -140,15 +139,21 @@ export function StackViewer({ stack }: StackViewerProps) {
               <div className="divide-y divide-border">
                 {groupedItems[category].map((item) => 
                   item.url ? (
-                    <a 
+                    <div
                       key={item.id} 
-                      href={item.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="block hover:bg-secondary/30 transition-colors"
+                      role="link"
+                      tabIndex={0}
+                      onClick={() => openItemLink(item.url!)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          openItemLink(item.url!)
+                        }
+                      }}
+                      className="block cursor-pointer hover:bg-secondary/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       <ItemContent item={item} />
-                    </a>
+                    </div>
                   ) : (
                     <div key={item.id}>
                       <ItemContent item={item} />
