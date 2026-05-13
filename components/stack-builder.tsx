@@ -15,6 +15,14 @@ import {
 import { StackItem, Category, categoryLabels, categoryIcons } from "@/lib/types"
 import { generateShareUrl } from "@/lib/stack-utils"
 
+const STACK_STORAGE_KEY = "lock-in-stack-builder"
+
+interface PersistedBuilderState {
+  title: string
+  items: StackItem[]
+  hasGeneratedShareLink: boolean
+}
+
 export function StackBuilder() {
   const [title, setTitle] = useState("my lock in stack")
   const [items, setItems] = useState<StackItem[]>([])
@@ -28,8 +36,46 @@ export function StackBuilder() {
   const [copied, setCopied] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<Category>>(new Set())
+  const [hasLoadedPersistedStack, setHasLoadedPersistedStack] = useState(false)
   const metadataRequestIdRef = useRef(0)
   const latestUrlRef = useRef("")
+
+  useEffect(() => {
+    try {
+      const rawPersistedState = window.localStorage.getItem(STACK_STORAGE_KEY)
+      if (!rawPersistedState) return
+
+      const persistedState = JSON.parse(rawPersistedState) as Partial<PersistedBuilderState>
+      const persistedTitle =
+        typeof persistedState.title === "string" && persistedState.title.trim()
+          ? persistedState.title
+          : "my lock in stack"
+      const persistedItems = Array.isArray(persistedState.items) ? persistedState.items : []
+
+      setTitle(persistedTitle)
+      setItems(persistedItems)
+
+      if (persistedState.hasGeneratedShareLink && persistedItems.length > 0) {
+        setShareUrl(generateShareUrl({ title: persistedTitle, items: persistedItems }))
+      }
+    } catch (error) {
+      console.error("Failed to load saved stack:", error)
+    } finally {
+      setHasLoadedPersistedStack(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hasLoadedPersistedStack) return
+
+    const persistedState: PersistedBuilderState = {
+      title,
+      items,
+      hasGeneratedShareLink: Boolean(shareUrl),
+    }
+
+    window.localStorage.setItem(STACK_STORAGE_KEY, JSON.stringify(persistedState))
+  }, [hasLoadedPersistedStack, items, shareUrl, title])
 
   const toggleCategory = (category: Category) => {
     setCollapsedCategories((prev) => {
