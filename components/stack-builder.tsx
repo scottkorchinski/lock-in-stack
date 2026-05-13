@@ -357,23 +357,31 @@ export function StackBuilder() {
                   <p className="text-sm text-primary font-medium">
                     share link generated!
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       value={shareUrl}
                       readOnly
-                      className="bg-secondary border-border text-sm"
+                      className="bg-secondary border-border text-sm sm:flex-1"
                     />
-                    <Button
-                      onClick={copyToClipboard}
-                      variant="outline"
-                      className="shrink-0 border-border"
-                    >
-                      {copied ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button asChild variant="outline" className="flex-1 border-border sm:flex-none">
+                        <a href={shareUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          open link
+                        </a>
+                      </Button>
+                      <Button
+                        onClick={copyToClipboard}
+                        variant="outline"
+                        className="shrink-0 border-border"
+                      >
+                        {copied ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

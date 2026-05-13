@@ -25,7 +25,7 @@ export function ModeToggle() {
       variant="outline"
       size="sm"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="fixed top-4 right-4 z-50 border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70"
+      className="fixed top-4 right-4 z-50 border-border bg-background/80 text-foreground hover:bg-secondary hover:text-foreground dark:hover:bg-secondary/80 supports-[backdrop-filter]:bg-background/70"
       aria-label={`switch to ${isDark ? "day" : "night"} mode`}
     >
       {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
