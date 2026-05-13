@@ -107,7 +107,7 @@ export function StackViewer({ stack }: StackViewerProps) {
         <h1 className="text-4xl sm:text-6xl font-bold text-foreground tracking-tight text-balance">
           lock<span className="text-primary">in</span>stack.
         </h1>
-        <p className="text-muted-foreground text-lg max-w-md mx-auto text-pretty">
+        <p className="text-muted-foreground text-lg italic max-w-md mx-auto text-pretty">
           share your focus toolkit. the books, apps, habits, and tools that help you lock in.
         </p>
       </header>
