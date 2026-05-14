@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Layers3, ExternalLink, ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Stack, Category, categoryLabels, categoryIcons, StackItem } from "@/lib/types"
+import { Stack, Category, categoryLabels, categoryIcons, getOrderedCategories, StackItem } from "@/lib/types"
 
 interface StackViewerProps {
   stack: Stack
@@ -52,6 +52,7 @@ export function StackViewer({ stack }: StackViewerProps) {
     },
     {} as Record<Category, StackItem[]>
   )
+  const orderedCategories = getOrderedCategories(stack.items)
 
   const ItemContent = ({ item }: { item: StackItem }) => {
     const isExpanded = expandedDescriptions.has(item.id)
@@ -120,7 +121,7 @@ export function StackViewer({ stack }: StackViewerProps) {
       </div>
 
       <div className="space-y-6">
-        {(Object.keys(groupedItems) as Category[]).map((category) => (
+        {orderedCategories.map((category) => (
           <div key={category} className="rounded-xl border border-border bg-card overflow-hidden">
             <button
               onClick={() => toggleCategory(category)}

@@ -1,12 +1,14 @@
 export type Category = 
+  | "apps" 
+  | "environment"
   | "books" 
   | "exercise" 
   | "food" 
-  | "apps" 
-  | "supplements" 
   | "habits" 
   | "music" 
-  | "environment"
+  | "other"
+  | "supplements" 
+  | "techniques"
 
 export interface StackItem {
   id: string
@@ -22,24 +24,55 @@ export interface Stack {
   items: StackItem[]
 }
 
+export function getOrderedCategories(items: Pick<StackItem, "category">[]): Category[] {
+  const seen = new Set<Category>()
+  const orderedCategories: Category[] = []
+
+  for (const item of items) {
+    if (seen.has(item.category)) continue
+
+    seen.add(item.category)
+    orderedCategories.push(item.category)
+  }
+
+  return orderedCategories
+}
+
+export const categoryOrder: Category[] = [
+  "apps",
+  "books",
+  "environment",
+  "exercise",
+  "food",
+  "habits",
+  "music",
+  "supplements",
+  "techniques",
+  "other",
+]
+
 export const categoryLabels: Record<Category, string> = {
+  apps: "apps & tools",
   books: "books",
+  environment: "environment",
   exercise: "exercise",
   food: "food & drinks",
-  apps: "apps & tools",
-  supplements: "supplements",
   habits: "habits",
   music: "music & audio",
-  environment: "environment",
+  other: "other",
+  supplements: "supplements",
+  techniques: "techniques",
 }
 
 export const categoryIcons: Record<Category, string> = {
+  apps: "⚡",
   books: "📚",
+  environment: "🏠",
   exercise: "💪",
   food: "🍵",
-  apps: "⚡",
-  supplements: "💊",
   habits: "✨",
   music: "🎧",
-  environment: "🏠",
+  other: "📦",
+  supplements: "💊",
+  techniques: "🎯",
 }
