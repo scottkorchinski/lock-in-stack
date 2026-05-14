@@ -44,6 +44,8 @@ interface PersistedBuilderState {
   shareId?: string | null
 }
 
+type ShareAction = "share" | "sync" | "regenerate" | null
+
 function getCategoryDragId(category: Category) {
   return `${CATEGORY_DRAG_ID_PREFIX}${category}`
 }
@@ -221,6 +223,7 @@ export function StackBuilder() {
   const [isFetching, setIsFetching] = useState(false)
   const [isFetchingEditMetadata, setIsFetchingEditMetadata] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
+  const [shareAction, setShareAction] = useState<ShareAction>(null)
   const [shareError, setShareError] = useState<string | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<Category>>(new Set())
   const [hasLoadedPersistedStack, setHasLoadedPersistedStack] = useState(false)
@@ -494,11 +497,23 @@ export function StackBuilder() {
     }
   }
 
-  async function syncShareLink(existingShareId?: string | null, snapshotOverride?: string) {
+  async function syncShareLink(
+    existingShareId?: string | null,
+    snapshotOverride?: string,
+    options?: {
+      action?: Exclude<ShareAction, null>
+      forceNewLink?: boolean
+    }
+  ) {
+    const forceNewLink = options?.forceNewLink ?? false
+    const action =
+      options?.action ??
+      (forceNewLink ? "regenerate" : (existingShareId ?? shareId) ? "sync" : "share")
     const stack = { title, items }
     const snapshot = snapshotOverride ?? JSON.stringify(stack)
 
     setIsSharing(true)
+    setShareAction(action)
     setShareError(null)
 
     try {
@@ -508,7 +523,7 @@ export function StackBuilder() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          shareId: existingShareId ?? shareId ?? undefined,
+          shareId: forceNewLink ? undefined : existingShareId ?? shareId ?? undefined,
           stack,
         }),
       })
@@ -524,21 +539,36 @@ export function StackBuilder() {
       lastSharedSnapshotRef.current = snapshot
     } catch (error) {
       console.error("Failed to create short share link:", error)
-      if (existingShareId ?? shareId) {
+      if (forceNewLink) {
+        setShareError(
+          shareId
+            ? "couldn't generate a new link yet, but your current link still works"
+            : "couldn't generate a short link yet, so your current link stayed the same"
+        )
+      } else if (existingShareId ?? shareId) {
         setShareError("couldn't sync your latest changes yet, but your short link still works")
+        lastSharedSnapshotRef.current = null
       } else {
         setShareId(null)
         setShareUrl(generateShareUrl(stack))
         setShareError("short links will work after storage is connected; using a long link for now")
+        lastSharedSnapshotRef.current = null
       }
-      lastSharedSnapshotRef.current = null
     } finally {
       setIsSharing(false)
+      setShareAction(null)
     }
   }
 
   const handleShare = () => {
-    void syncShareLink()
+    void syncShareLink(undefined, undefined, { action: "share" })
+  }
+
+  const handleGenerateNewLink = () => {
+    void syncShareLink(undefined, undefined, {
+      action: "regenerate",
+      forceNewLink: true,
+    })
   }
 
   useEffect(() => {
@@ -942,12 +972,12 @@ export function StackBuilder() {
                 size="lg"
                 disabled={isSharing}
               >
-                {isSharing ? (
+                {isSharing && shareAction === "share" ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <Share2 className="w-4 h-4 mr-2" />
                 )}
-                {isSharing ? "creating short link..." : "generate share link"}
+                {isSharing && shareAction === "share" ? "creating short link..." : "generate share link"}
               </Button>
             ) : (
               <Card className="bg-primary/5 border-primary/20">
@@ -955,14 +985,9 @@ export function StackBuilder() {
                   <p className="text-sm text-primary font-medium">
                     share link generated!
                   </p>
-                  {isSharing && shareId && (
+                  {isSharing && shareAction === "sync" && shareId && (
                     <p className="text-xs text-muted-foreground">
                       updating the shared stack...
-                    </p>
-                  )}
-                  {shareError && (
-                    <p className="text-xs text-muted-foreground">
-                      {shareError}
                     </p>
                   )}
                   <div className="flex flex-col gap-2 sm:flex-row">
@@ -971,25 +996,46 @@ export function StackBuilder() {
                       readOnly
                       className="bg-secondary border-border text-sm sm:flex-1"
                     />
-                    <div className="flex gap-2">
-                      <Button asChild variant="outline" className="flex-1 border-border sm:flex-none">
-                        <a href={shareUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          open link
-                        </a>
-                      </Button>
-                      <Button
-                        onClick={copyToClipboard}
-                        variant="outline"
-                        className="shrink-0 border-border"
-                      >
-                        {copied ? (
-                          <Check className="w-4 h-4" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleGenerateNewLink}
+                      variant="outline"
+                      className="border-border sm:shrink-0"
+                      disabled={isSharing}
+                    >
+                      {isSharing && shareAction === "regenerate" ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Share2 className="w-4 h-4 mr-2" />
+                      )}
+                      {isSharing && shareAction === "regenerate"
+                        ? "generating new link..."
+                        : "generate new link"}
+                    </Button>
+                  </div>
+                  {shareError && (
+                    <p className="text-xs text-muted-foreground">
+                      {shareError}
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button asChild variant="outline" className="flex-1 border-border sm:flex-none">
+                      <a href={shareUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        open link
+                      </a>
+                    </Button>
+                    <Button
+                      onClick={copyToClipboard}
+                      variant="outline"
+                      className="shrink-0 border-border"
+                    >
+                      {copied ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

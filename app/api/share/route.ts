@@ -6,14 +6,16 @@ import { isShareStoreConfigured, saveSharedStack } from "@/lib/share-store"
 export const runtime = "nodejs"
 
 const categorySchema = z.enum([
+  "apps",
   "books",
+  "environment",
   "exercise",
   "food",
-  "apps",
-  "supplements",
   "habits",
   "music",
-  "environment",
+  "other",
+  "supplements",
+  "techniques",
 ])
 
 const stackSchema = z.object({
