@@ -1,7 +1,7 @@
-import { Category, Stack, StackItem } from "./types"
+import { Category, Stack, StackItem, categoryOrder } from "./types"
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string"
 
-const shareCategoryOrder: Category[] = [
+const legacyShareCategoryOrder: Category[] = [
   "books",
   "exercise",
   "food",
@@ -12,8 +12,10 @@ const shareCategoryOrder: Category[] = [
   "environment",
 ]
 
+const shareCategoryOrder = categoryOrder
+
 interface CompactStackPayload {
-  v: 1
+  v: 1 | 2
   t: string
   i: CompactStackItem[]
 }
@@ -46,16 +48,23 @@ function decodeStackPayload(payload: unknown): Stack | null {
 
   if ("v" in payload && "t" in payload && "i" in payload) {
     const compactPayload = payload as Partial<CompactStackPayload>
-    if (compactPayload.v !== 1 || typeof compactPayload.t !== "string" || !Array.isArray(compactPayload.i)) {
+    if (
+      (compactPayload.v !== 1 && compactPayload.v !== 2) ||
+      typeof compactPayload.t !== "string" ||
+      !Array.isArray(compactPayload.i)
+    ) {
       return null
     }
+
+    const decodedCategoryOrder =
+      compactPayload.v === 1 ? legacyShareCategoryOrder : shareCategoryOrder
 
     const items: StackItem[] = compactPayload.i.flatMap((item, index) => {
       if (!Array.isArray(item) || typeof item[0] !== "string" || typeof item[1] !== "number") {
         return []
       }
 
-      const category = shareCategoryOrder[item[1]]
+      const category = decodedCategoryOrder[item[1]]
       if (!category) return []
 
       return [
@@ -90,7 +99,7 @@ function decodeStackPayload(payload: unknown): Stack | null {
 
 export function encodeStack(stack: Stack): string {
   const payload: CompactStackPayload = {
-    v: 1,
+    v: 2,
     t: stack.title,
     i: stack.items.map(encodeStackItem),
   }
